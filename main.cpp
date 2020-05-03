@@ -20,6 +20,86 @@ class RBT{
     };
     Node *root;
 
+
+    Node *findKey(Key key) const{
+        Node *temp = root;
+        while(temp){
+            if(temp->key == key)
+                return temp;
+            else if(temp->key > key)
+                temp = temp->left;
+            else
+                temp = temp->right;
+        }
+        return nullptr;
+    }
+    Node *getMinOfSubTree(Node *rootOfTree) const
+    {
+        if(rootOfTree){
+            Node *temp=rootOfTree;
+            do{
+                rootOfTree = temp;
+                temp = temp->left;
+            }while(temp);
+
+            return rootOfTree;
+        }else
+            return nullptr;
+
+    }
+    Node *getMaxOfSubTree(Node *rootOfTree) const
+    {
+        if(rootOfTree){
+            Node *temp=rootOfTree;
+            do{
+                rootOfTree = temp;
+                temp = temp->right;
+            }while(temp);
+
+            return rootOfTree;
+
+        }else
+            return nullptr;
+
+    }
+    Node *getSuccessor(Node *node) const{
+        if(!node)
+            return nullptr;
+
+        if(node->right){
+            return getMinOfSubTree(node->right);
+        }else{
+            Node *successor = nullptr;
+            Node *tempRoot = root;
+            while(tempRoot){
+                if(node->key < tempRoot->key){
+                    successor = tempRoot;
+                    tempRoot = tempRoot->left;
+                }
+                else if(node->key > tempRoot->key)
+                    tempRoot = tempRoot->right;
+                else
+                    break;
+            }
+
+            return successor;
+        }
+    }
+
+    Node *getPredecessor(Node *node) const
+    {
+        if(node->left){
+            return getMaxOfSubTree(node->left);
+        }else{
+            Node *temp = node->parent;
+            while(temp && temp->right != node){
+                node = temp;
+                temp = temp->parent;
+            }
+            return temp;
+        }
+    }
+
     void setRoot(Node* newRoot){
         root = newRoot;
         root->color = BLACK;
@@ -110,30 +190,6 @@ class RBT{
         changeColor(node->parent,BLACK);
         changeColor(getUncle(node),BLACK);
         changeColor(getGrandParent(node),RED);
-
-    }
-    void rightRotateNOTWORK(Node *node){ //parent do poprawy
-        Node *b,*a,*A,*B,*C,*father;
-        a = node->left;
-        b = node;
-        A = a->left; B = a->right; C = b->right;
-        father = getParent(node);
-        b->left = B;
-        if(father)
-            isLeftChild(node) ? father->left = a : father->right = a;
-
-        if(B)
-            B->parent = b;
-        if(C)
-            C->parent = b;
-        a->parent = b->parent;
-
-        if(isRoot(node->parent))
-            root = node;
-
-        b->right = C;
-        a->right = b;
-        node->parent = a;
 
     }
     void rightRotate(Node *node){
