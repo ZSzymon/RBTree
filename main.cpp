@@ -2,10 +2,9 @@
 using namespace std;
 
 class Test;
+
 template<class Key>
 class RBT{
-    bool c1,c2,c3,c4,c5,c6;
-    bool c0 = false;
     friend class Test;
     struct Node;
     bool canRecolor = false;
@@ -20,7 +19,9 @@ class RBT{
     };
     Node *root;
 
-
+    Node *getExisingChild(Node *node){
+        return node->left ? node->left : node->right;
+    }
     Node *findKey(Key key) const{
         Node *temp = root;
         while(temp){
@@ -85,7 +86,6 @@ class RBT{
             return successor;
         }
     }
-
     Node *getPredecessor(Node *node) const
     {
         if(node->left){
@@ -99,7 +99,71 @@ class RBT{
             return temp;
         }
     }
+    Node *getGrandParent(Node *node){
+        if(node && node->parent && node->parent->parent)
+            return node->parent->parent;
+        return nullptr;
+    }
+    Node *getParent(Node* node){
+        //assert(node->parent);
+        return node->parent;
+    }
+    Node *getSibling(Node *node){
+        if(node->parent)
+          return node->parent->key > node->key ? node->parent->right : node->parent->left;
+        return nullptr;
+    }
+    Node *getUncle(Node *node){
+        Node *grandFather = getGrandParent(node);
+        if(grandFather)
+            return node->key < grandFather->key ? grandFather->right : grandFather->left;
 
+        return nullptr;
+    }
+    bool hasNoChilds(Node *node){
+        return !node->left && !node->right;
+    }
+
+    bool hasOneChild(Node *node){
+        return (node->left && !node->right) || (!node->left && node->right);
+    }
+
+    bool hasTwoChilds(Node *node){
+        return !hasNoChilds(node);
+    }
+
+    bool hasParent(Node *node){
+        return node->parent != nullptr;
+    }
+
+
+    bool isRoot(Node *node){
+        if(node)
+            return node == root;
+        return true;
+    }
+    bool isUncleOnRightSide(Node *node,Node*grandParent){
+        assert(node && grandParent);
+        return node->key < grandParent->key;
+    }
+    bool isUncleOnLeftSide(Node *node, Node *grandParent){
+        return !isUncleOnRightSide(node,grandParent);
+    }
+    bool isLeftChild(Node *node){
+        assert(node->parent != nullptr);
+        return node->parent->key > node->key;
+
+    }
+    bool isRightChild(Node *node){
+        assert(node->parent != nullptr);
+        return node->parent->key < node->key;
+    }
+
+    Color getColorOf(Node *node){
+        if(node)
+            return node->color;
+        return BLACK;
+    }
     void setRoot(Node* newRoot){
         root = newRoot;
         root->color = BLACK;
@@ -142,33 +206,6 @@ class RBT{
         }
 
     }
-
-    Color getColorOf(Node *node){
-        if(node)
-            return node->color;
-        return BLACK;
-    }
-    Node *getUncle(Node *node){
-        Node *grandFather = getGrandParent(node);
-        if(grandFather)
-            return node->key < grandFather->key ? grandFather->right : grandFather->left;
-
-        return nullptr;
-    }
-    Node *getGrandParent(Node *node){
-        if(node && node->parent && node->parent->parent)
-            return node->parent->parent;
-        return nullptr;
-    }
-    Node *getParent(Node* node){
-        //assert(node->parent);
-        return node->parent;
-    }
-    bool isRoot(Node *node){
-        if(node)
-            return node == root;
-        return true;
-}
     void changeColor(Node *node, Color newColor){
         if(node)
             node->color = newColor;
@@ -176,15 +213,6 @@ class RBT{
     void reverseColor(Node *node){
         assert(node);
         node->color = node->color == BLACK ? RED : BLACK;
-    }
-    bool isLeftChild(Node *node){
-        assert(node->parent != nullptr);
-        return node->parent->key > node->key;
-
-    }
-    bool isRightChild(Node *node){
-        assert(node->parent != nullptr);
-        return node->parent->key < node->key;
     }
     void aVersion(Node *node){
         changeColor(node->parent,BLACK);
@@ -233,36 +261,7 @@ class RBT{
 
 
     }
-    void leftRotateNOTWORK(Node *node){
-        Node *b,*a,*A,*B,*C,*father;
-        a = node;
-        b = node->right;
-        A = a->left; B = b->left; C = b->right;
-        father = getParent(node);
-        if(father){
-            isLeftChild(node) ? father->left = b : father->right = b;
-        }
 
-        b->left = a;
-        a->right = B;
-        b->parent = a->parent;
-        a->parent = b;
-
-        if(B)
-            B->parent = a;
-        if(C)
-            C->parent = b;
-        if(isRoot(node))
-            root = b;
-    }
-
-    bool isUncleOnRightSide(Node *node,Node*grandParent){
-        assert(node && grandParent);
-        return node->key < grandParent->key;
-    }
-    bool isUncleOnLeftSide(Node *node, Node *grandParent){
-        return !isUncleOnRightSide(node,grandParent);
-    }
 
     void updateParentAndNode(Node *node, Node *parent){
         if(parent->parent == node)
@@ -329,11 +328,7 @@ class RBT{
 
         }
     }
-    Node *getSibling(Node *node){
-        if(node->parent)
-          return node->parent->key > node->key ? node->parent->right : node->parent->left;
-        return nullptr;
-    }
+
     void inOrder(Node *node){
         if(!node)
             return;
@@ -349,16 +344,58 @@ class RBT{
     }
     void insert(Key key){
         Node *newNode = new Node(key);
-
         if(root){
             _insertBST_Style(newNode);
             if(canRecolor)
                 reColor(newNode);
-
-
         }else{
             setRoot(newNode);
         }
+    }
+    void remove(Node *toDelete){
+        if(!toDelete)
+            return;
+        Node *father = toDelete->parent;
+
+        //case No childs.
+        if(hasNoChilds(toDelete)){
+            if(father){
+                father->key > toDelete->key ? father->left = nullptr : father->right = nullptr;
+            }else{
+                root = nullptr;
+            }
+            //delete toDelete;
+
+        }
+        //case oneChild
+        else if(hasOneChild(toDelete)){
+            Node *child = getExisingChild(toDelete);
+
+            if(father){
+                father->key > toDelete->key ? father->left = child : father->right = child;
+                child->parent = father;
+            }
+            if(toDelete == root){
+                root = child;
+                root->parent = nullptr;
+            }
+            //delete toDelete;
+        }
+        //case two childs
+        else{
+            Node * succesor = getSuccessor(toDelete);
+            toDelete->key = succesor->key;
+            remove(succesor);
+        }
+
+    }
+    void deleteKey(Key key){
+        Node *toDelete = findKey(key);
+        this->remove(toDelete);
+
+
+
+
     }
 };
 
@@ -376,6 +413,7 @@ public:
         rbt.insert(17);
         rbt.insert(19);
         rbt.insert(30);
+
 
     }
     void test2(){
@@ -404,13 +442,31 @@ public:
         }
         rbt.inOrder(rbt.root);
     }
+    void test4(){
+        rbt.canRecolor = true;
+        rbt.insert(20);
+        rbt.insert(25);
+        rbt.insert(15);
+        rbt.insert(24);
+        rbt.insert(30);
+        rbt.insert(18);
+        rbt.insert(13);
+        RBT<int>::Node *super = rbt.findKey(18);
+        super->color = RBT<int>::BLACK;
+        rbt.changeColor(rbt.findKey(25),RBT<int>::RED);
+        rbt.changeColor(rbt.findKey(24),RBT<int>::BLACK);
+        rbt.changeColor(rbt.findKey(30),RBT<int>::BLACK);
+
+        rbt.deleteKey(15);
+
+    }
 };
 
 int main()
 {
 
     Test test;
-    test.test2();
+    test.test4();
     return 0;
 }
 
